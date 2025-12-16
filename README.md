@@ -16,6 +16,9 @@
 *
 
 ## ゲームの実装
+## ゲーム機能チャート構想
+![Image](https://github.com/user-attachments/assets/298c986d-7624-4731-b5c6-da07fec713ba)
+
 ### 共通基本機能
 * 背景画像と主人公キャラクターの描画
 * 敵の種類10種類
