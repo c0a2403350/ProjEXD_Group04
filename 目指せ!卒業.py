@@ -867,8 +867,7 @@ def main():
     mssl_se.set_volume(0.4)
     swrd_se = pg.mixer.Sound("sound/sword.wav")
     swrd_se.set_volume(1)    
-    
-    score = Score()
+
     # bg_img.set_alpha(10)##残像エフェクト今後の新機能で追加できそう
     
     score = Score()
@@ -1030,18 +1029,23 @@ def main():
         #ボム攻撃用エフェクトとの衝突
         for emy in pg.sprite.groupcollide(emys, bb_effect, True, False).keys():
             exps.add(Explosion(emy, 100))
+            score.value += 1
         #レーザー武器との衝突
         for emy in pg.sprite.groupcollide(emys, lsr_wep, True, False).keys():
             exps.add(Explosion(emy, 100))
+            score.value += 1
         #追尾ミサイルとの衝突
         for emy in pg.sprite.groupcollide(emys, mssl_wep, True, True).keys():
             exps.add(Explosion(emy, 100))
+            score.value += 1
         #連続弾との衝突
         for emy in pg.sprite.groupcollide(emys, gun_wep, True, True).keys():
             exps.add(Explosion(emy, 100))
+            score.value += 1
         #周回軌道武器との衝突
         for emy in pg.sprite.groupcollide(emys, swrd_wep, True, False).keys():
             exps.add(Explosion(emy, 100))
+            score.value += 1
 
         #敵攻撃×武器衝突イベント
         #ボム攻撃用エフェクトとの衝突
@@ -1110,6 +1114,7 @@ def main():
                     time.sleep(2)
                     return
 
+        score.update(screen)
         gravity.update()
         gravity.draw(screen)
         bird.update(key_lst, screen)        
