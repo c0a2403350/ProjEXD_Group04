@@ -149,7 +149,7 @@ class Bird(pg.sprite.Sprite):
         self.set_item(1, str(item), attack, level)
 
         if os.path.exists("sound/damage.mp3"):
-            self.dmg_sound = pg.mixer.Sound("fig/damage.mp3") #ダメージエフェクト(elseはエラー回避用)
+            self.dmg_sound = pg.mixer.Sound("sound/damage.mp3") #ダメージエフェクト(elseはエラー回避用)
         else:
             self.dmg_sound = None
 
@@ -259,6 +259,8 @@ class Explosion(pg.sprite.Sprite):
         self.image = self.imgs[0]
         self.rect = self.image.get_rect(center=obj.rect.center)
         self.life = life
+        
+        self.atk = 5 #攻撃力
 
     def update(self):
         """
@@ -496,7 +498,6 @@ class Bomb_Weapon(pg.sprite.Sprite):
 
         #ステータス設定
         self.lv = 1 #レベル
-        self.atk = 5 #攻撃力
         self.cnt = 100 #表示時間
 
     def update(self, screen: pg.Surface):
@@ -753,7 +754,14 @@ class Enemy(pg.sprite.Sprite):
         wave = lv // 3
         if lv >= 15:wave = 4
         enemy_fid_dic = {0: "fig/report.png", 1: "fig/clock.png", 2: "fig/ai.png", 3: "fig/guard.png", 4: "fig/teacher.png"}
-        enemy_stats = [[100,100,100,2],[100,100,100,2],[100,100,100,2],[100,100,100,2],[100,100,100,2]]
+        #HP, atk, def, spd
+        enemy_stats = [
+            [2,2], 
+            [4,2], 
+            [5,2],
+            [8,3],
+            [10,4]
+        ]
         self.image = pg.transform.rotozoom(pg.image.load(enemy_fid_dic[wave]), 0, 0.1)
         self.rect = self.image.get_rect()
         #HP,attack,defense,speed
@@ -766,7 +774,7 @@ class Enemy(pg.sprite.Sprite):
             self.rect.centery = random.choice([0, height])
 
         self.pos = pg.Vector2(self.rect.center)
-        self.speed = self.stats[3]
+        self.speed = self.stats[1]
 
     def update(self, bird_pos):
         target_vector = pg.math.Vector2(bird_pos)
@@ -789,7 +797,7 @@ class LastBoss(Enemy):
         # 画面を埋め尽くすサイズに画像を拡大 (元の画像を2倍にするなど)
         original_img = pg.image.load(f"fig/fantasy_maou_devil.png")
         self.image = pg.transform.rotozoom(original_img, 0, 2.5)
-        self.stats = [10000000000, 50, 20, 1]  # HP, attack, defense, speed
+        self.stats = [1000000000000000,1]  # HP, attack, defense, speed
 
         self.rect = self.image.get_rect()
         self.rect.centerx = width / 2  # 横位置は画面中央
@@ -814,8 +822,8 @@ def main():
     global width, height #画面幅、画面高さのグローバル変数を呼び出す
     
     pg.display.set_caption("真！こうかとん無双")
-    screen = pg.display.set_mode((width, height))
-    width, height = screen.get_width(), screen.get_height()
+    screen = pg.display.set_mode((width, height), pg.FULLSCREEN)
+    width, height = screen.get_size()
     
     #背景写真
     bg_img = pg.image.load(f"fig/back_ground.png")
@@ -868,7 +876,7 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
-            if event.type == pg.K_ESCAPE:
+            if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                 return 0
 
             # スタート画面用のイベント処理
@@ -955,26 +963,63 @@ def main():
 
         #敵×武器衝突イベント
         if not ending:
-            #ボム攻撃用エフェクトとの衝突
-            for emy in pg.sprite.groupcollide(emys, bb_effect, True, False).keys():
-                exps.add(Explosion(emy, 100))
-                score.value += 1
-            #レーザー武器との衝突
-            for emy in pg.sprite.groupcollide(emys, lsr_wep, True, False).keys():
-                exps.add(Explosion(emy, 100))
-                score.value += 1
-            #追尾ミサイルとの衝突
-            for emy in pg.sprite.groupcollide(emys, mssl_wep, True, True).keys():
-                exps.add(Explosion(emy, 100))
-                score.value += 1
-            #連続弾との衝突
-            for emy in pg.sprite.groupcollide(emys, gun_wep, True, True).keys():
-                exps.add(Explosion(emy, 100))
-                score.value += 1
-            #周回軌道武器との衝突
-            for emy in pg.sprite.groupcollide(emys, swrd_wep, True, False).keys():
-                exps.add(Explosion(emy, 100))
-                score.value += 1
+
+            # ① 爆風（bb_effect）との衝突：爆風は消さない
+            hits = pg.sprite.groupcollide(emys, bb_effect, False, False)  # dict: {emy: [effect,...]}
+            for emy, eff_list in hits.items():
+                # 当たっている爆風(複数あり得る)のatk合計だけ減らす
+                dmg = sum(eff.atk for eff in eff_list)
+                emy.stats[0] -= dmg
+
+                if emy.stats[0] <= 0:
+                    exps.add(Explosion(emy, 100))
+                    emy.kill()
+                    score.value += 1
+
+            # ② レーザー：レーザーは当たったら消す（敵は残す）
+            hits = pg.sprite.groupcollide(emys, lsr_wep, False, True)  # dict: {emy: [laser,...]}
+            for emy, lasers in hits.items():
+                dmg = sum(l.atk for l in lasers)
+                emy.stats[0] -= dmg
+
+                if emy.stats[0] <= 0:
+                    exps.add(Explosion(emy, 100))
+                    emy.kill()
+                    score.value += 1
+
+            # ③ 追尾ミサイル：ミサイルは当たったら消す
+            hits = pg.sprite.groupcollide(emys, mssl_wep, False, True)  # dict: {emy: [missile,...]}
+            for emy, missiles in hits.items():
+                dmg = sum(m.atk for m in missiles)
+                emy.stats[0] -= dmg
+
+                if emy.stats[0] <= 0:
+                    exps.add(Explosion(emy, 100))
+                    emy.kill()
+                    score.value += 1
+
+            # ④ 連続弾：弾は当たったら消す
+            hits = pg.sprite.groupcollide(emys, gun_wep, False, True)  # dict: {emy: [bullet,...]}
+            for emy, bullets in hits.items():
+                dmg = sum(b.atk for b in bullets)
+                emy.stats[0] -= dmg
+
+                if emy.stats[0] <= 0:
+                    exps.add(Explosion(emy, 100))
+                    emy.kill()
+                    score.value += 1
+
+            # ⑤ 剣：剣は消さない（敵も消さない）
+            hits = pg.sprite.groupcollide(emys, swrd_wep, False, False)  # dict: {emy: [sword,...]}
+            for emy, swords in hits.items():
+                dmg = sum(s.atk for s in swords)
+                emy.stats[0] -= dmg
+
+                if emy.stats[0] <= 0:
+                    exps.add(Explosion(emy, 100))
+                    emy.kill()
+                    score.value += 1
+
 
         if score.value >= 150 and not ending:
             if boss_flag == False:
