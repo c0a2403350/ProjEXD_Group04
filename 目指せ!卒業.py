@@ -49,23 +49,18 @@ class Bird(pg.sprite.Sprite):
     }
 
     def __init__(self, num: int, xy: tuple[int, int]):
-        """
-        こうかとん画像Surfaceを生成する
-        引数1 num：こうかとん画像ファイル名の番号
-        引数2 xy：こうかとん画像の位置座標タプル
-        """
         super().__init__()
         img0 = pg.transform.rotozoom(pg.image.load(f"fig/{num}.png"), 0, 0.9)
-        img = pg.transform.flip(img0, True, False)  # デフォルトのこうかとん
+        img = pg.transform.flip(img0, True, False)
         self.imgs = {
-            (+1, 0): img,  # 右
-            (+1, -1): pg.transform.rotozoom(img, 45, 0.9),  # 右上
-            (0, -1): pg.transform.rotozoom(img, 90, 0.9),  # 上
-            (-1, -1): pg.transform.rotozoom(img0, -45, 0.9),  # 左上
-            (-1, 0): img0,  # 左
-            (-1, +1): pg.transform.rotozoom(img0, 45, 0.9),  # 左下
-            (0, +1): pg.transform.rotozoom(img, -90, 0.9),  # 下
-            (+1, +1): pg.transform.rotozoom(img, -45, 0.9),  # 右下
+            (+1, 0): img,
+            (+1, -1): pg.transform.rotozoom(img, 45, 0.9),
+            (0, -1): pg.transform.rotozoom(img, 90, 0.9),
+            (-1, -1): pg.transform.rotozoom(img0, -45, 0.9),
+            (-1, 0): img0,
+            (-1, +1): pg.transform.rotozoom(img0, 45, 0.9),
+            (0, +1): pg.transform.rotozoom(img, -90, 0.9),
+            (+1, +1): pg.transform.rotozoom(img, -45, 0.9),
         }
         self.dire = (+1, 0)
         self.image = self.imgs[self.dire]
@@ -74,14 +69,97 @@ class Bird(pg.sprite.Sprite):
         self.speed = 3
         self.state = "normal"
         self.hyper_life = 0
-        
-        self.hp=10
-        self.item1 = None#武器ランダム
+
+        self.hp = 10
+        self.playerlv = 1
+
+        # =========================
+        # 機能：アイテム保持スロット（5枠）を実装
+        # - item1〜item5 を「データ」として確実に保持できる形にする
+        # - 外部から関数で安全に変更できるようにする
+        # =========================
+        # 1枠 = {"name": str, "attack": int, "level": int} or None
+        self._items: list[dict | None] = [None] * 5
+
+        # 互換用：既存コードの item1〜item5 を残す（中身は _items と同期）
+        self.item1 = None
         self.item2 = None
         self.item3 = None
         self.item4 = None
         self.item5 = None
-        self.playerlv=1
+
+    # =========================
+    # 機能：アイテム操作API（外部から呼ぶ用）
+    # =========================
+    def set_item(self, slot: int, name: str, attack: int = 0, level: int = 1) -> None:
+        """
+        指定スロット(1〜5)にアイテムをセットする
+        """
+        idx = slot - 1
+        if idx < 0 or idx >= 5:
+            raise ValueError("slot は 1〜5 で指定してください")
+
+        self._items[idx] = {"name": name, "attack": int(attack), "level": int(level)}
+        self._sync_item_aliases()
+
+    def get_item(self, slot: int) -> dict | None:
+        """
+        指定スロット(1〜5)のアイテムを取得（無ければNone）
+        """
+        idx = slot - 1
+        if idx < 0 or idx >= 5:
+            raise ValueError("slot は 1〜5 で指定してください")
+        return self._items[idx]
+
+    def clear_item(self, slot: int) -> None:
+        """
+        指定スロット(1〜5)のアイテムを外す
+        """
+        idx = slot - 1
+        if idx < 0 or idx >= 5:
+            raise ValueError("slot は 1〜5 で指定してください")
+        self._items[idx] = None
+        self._sync_item_aliases()
+
+    def swap_items(self, slot_a: int, slot_b: int) -> None:
+        """
+        スロット同士を入れ替える（1〜5）
+        """
+        ia = slot_a - 1
+        ib = slot_b - 1
+        if not (0 <= ia < 5 and 0 <= ib < 5):
+            raise ValueError("slot は 1〜5 で指定してください")
+        self._items[ia], self._items[ib] = self._items[ib], self._items[ia]
+        self._sync_item_aliases()
+
+    def get_items(self) -> list[dict | None]:
+        """
+        全スロットのコピーを返す（外部から直接書き換えされないようにする）
+        """
+        # dictの中身もコピーして返す
+        out = []
+        for it in self._items:
+            out.append(None if it is None else dict(it))
+        return out
+
+    def _sync_item_aliases(self) -> None:
+        """
+        内部保持(_items)と互換変数(item1〜item5)を同期する
+        """
+        self.item1, self.item2, self.item3, self.item4, self.item5 = self._items
+
+    # =========================
+    # 互換：元の関数名を「ちゃんと動く形」にして残す（外部コードが呼んでもOK）
+    # =========================
+    def item_set_(self, item, attack, level):
+        """
+        機能：互換API
+        - 旧仕様の item_set_ を「スロット1にセット」として扱う
+        """
+        self.set_item(1, str(item), attack, level)
+
+
+
 
 
     def change_img(self, num: int, screen: pg.Surface):
