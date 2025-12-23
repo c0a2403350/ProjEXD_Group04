@@ -5,7 +5,8 @@ import sys
 import time
 import pygame as pg
 
-width, height = 0, 0 # ゲームウィンドウの幅, 高さ
+WIDTH = 1100 # ゲームウィンドウの幅
+HEIGHT = 650 # ゲームウィンドウの高さ
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -16,9 +17,9 @@ def check_bound(obj_rct: pg.Rect) -> tuple[bool, bool]:
     戻り値：横方向，縦方向のはみ出し判定結果（画面内：True／画面外：False）
     """
     yoko, tate = True, True
-    if obj_rct.left < 0 or width < obj_rct.right:
+    if obj_rct.left < 0 or WIDTH < obj_rct.right:
         yoko = False
-    if obj_rct.top < 0 or height < obj_rct.bottom:
+    if obj_rct.top < 0 or HEIGHT < obj_rct.bottom:
         tate = False
     return yoko, tate
 
@@ -205,8 +206,8 @@ class Gravity(pg.sprite.Sprite):
 
         self.alpha = 250
         #イベント用サーフェイス
-        self.image = pg.Surface((width, height))
-        pg.draw.rect(self.image, (0,0,0), (0,0,width,height))
+        self.image = pg.Surface((WIDTH, HEIGHT))
+        pg.draw.rect(self.image, (0,0,0), (0,0,WIDTH,HEIGHT))
         self.image.set_alpha(self.alpha)
 
         self.rect = self.image.get_rect()
@@ -216,7 +217,7 @@ class Gravity(pg.sprite.Sprite):
         時間処理
         """
         self.alpha -= 0.5
-        pg.draw.rect(self.image, (0,0,0), (0,0,width,height))
+        pg.draw.rect(self.image, (0,0,0), (0,0,WIDTH,HEIGHT))
         self.image.set_alpha(self.alpha)
 
         self.life -= 1
@@ -282,9 +283,9 @@ class Enemy(pg.sprite.Sprite):
         super().__init__()
         self.image = pg.transform.rotozoom(random.choice(__class__.imgs), 0, 0.8)
         self.rect = self.image.get_rect()
-        self.rect.center = random.randint(0, width), 0
+        self.rect.center = random.randint(0, WIDTH), 0
         self.vx, self.vy = 0, +6
-        self.bound = random.randint(50, height//2)  # 停止位置
+        self.bound = random.randint(50, HEIGHT//2)  # 停止位置
         self.state = "down"  # 降下状態or停止状態
         self.interval = random.randint(50, 300)  # 爆弾投下インターバル
 
@@ -312,7 +313,7 @@ class Score:
         self.value = 10000
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
         self.rect = self.image.get_rect()
-        self.rect.center = 100, height-50
+        self.rect.center = 100, HEIGHT-50
 
     def update(self, screen: pg.Surface):
         self.image = self.font.render(f"Score: {self.value}", 0, self.color)
@@ -346,7 +347,7 @@ class EMP(pg.sprite.Sprite):
             bomb.state = "inactive"
 
         # 画面全体に透明な黄色矩形を表示
-        self.image = pg.Surface((width, height), pg.SRCALPHA)
+        self.image = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
         self.image.fill((255, 255, 0, 100))  # RGBA (alpha=100)
         self.rect = self.image.get_rect()
 
@@ -369,14 +370,14 @@ class Shield(pg.sprite.Sprite):
     """
     def __init__(self, bird: Bird, life: int):
         super().__init__()
-        width = 20
-        height = bird.rect.height * 2
+        WIDTH = 20
+        HEIGHT = bird.rect.height * 2
 
         # 手順1：空のSurfaceを生成（アルファ付き）
-        base_image = pg.Surface((width, height), pg.SRCALPHA)
+        base_image = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
 
         # 手順2：青いrectを描画
-        pg.draw.rect(base_image, (0, 0, 255), (0, 0, width, height))
+        pg.draw.rect(base_image, (0, 0, 255), (0, 0, WIDTH, HEIGHT))
 
         # 手順3：こうかとんの向きを取得
         vx, vy = bird.dire
@@ -673,15 +674,11 @@ class Sword_Wepon(pg.sprite.Sprite):
         self.rect = self.image.get_rect(center=center)          
         
 def main():
-    global width, height
-
     pg.display.set_caption("真！こうかとん無双")
-    screen = pg.display.set_mode((width, height), pg.FULLSCREEN)
-
-    width, height = screen.get_width(), screen.get_height()
+    screen = pg.display.set_mode((WIDTH, HEIGHT))
 
     bg_img = pg.image.load(f"fig/back_ground.png")
-    bg_img = pg.transform.scale(bg_img, (width, height))
+    bg_img = pg.transform.scale(bg_img, (WIDTH, HEIGHT))
     
     score = Score()
 
